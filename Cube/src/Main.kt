@@ -1,16 +1,15 @@
 import processing.core.PApplet
 import processing.core.PConstants
 import processing.core.PVector
-import java.lang.NumberFormatException
 
 data class Tile(val color: Color) {
 
-    enum class Color(val color: Int, val r: Int, val g: Int, val b: Int) {
-        RED(0, 255, 0, 0),
-        WHITE(1, 255, 255, 255),
+    enum class Color(val index: Int, val r: Int, val g: Int, val b: Int) {
+        WHITE(0, 255, 255, 255),
+        RED(1, 255, 0, 0),
         BLUE(2, 0, 0, 255),
-        ORANGE(3, 255, 150, 0),
-        YELLOW(4, 255, 255, 0),
+        YELLOW(3, 255, 255, 0),
+        ORANGE(4, 255, 150, 0),
         GREEN(5, 100, 255, 0)
     }
 }
@@ -22,9 +21,25 @@ data class Face(val tiles: List<List<Tile>>) {
             return tiles.size
         }
 
-    constructor(size: Int, color: Tile.Color) : this(List(size) { List(size) { Tile(color) } })
-}
+    constructor(size: Int, color: Tile.Color) : this(List(size) {
+        List(size) {
+            Tile(Tile.Color.values().random())
+        }
+    })
 
+    fun rotated(clockwise: Boolean): Face {
+        return Face(
+            tiles.mapIndexed { i, list ->
+                list.mapIndexed { j, _ ->
+                    val k = (i * size + j)
+                    if (clockwise)
+                        tiles[k % size][size - k / size - 1]
+                    else
+                        tiles[size - k % size - 1][k / size]
+                }
+            })
+    }
+}
 
 data class Cube(val faces: List<Face>) {
 
@@ -36,23 +51,26 @@ data class Cube(val faces: List<Face>) {
     constructor(size: Int) : this(Tile.Color.values().map { color -> Face(size, color) })
 }
 
-class RubiksCube(val size: Int) : PApplet() {
+class RubikCube(val size: Int) : PApplet() {
 
     companion object Factory {
 
         fun run(size: Int) {
-            val rc = RubiksCube(size)
+            val rc = RubikCube(size)
             rc.runSketch()
         }
     }
 
     var cube = Cube(size)
     var faceLength = 0f
-    var rotationZ = PI / 8
-    var rotationX = PI / 8
+    var rotationZ = 0f
+    var rotationX = PI / 4
+    var clockwise = true
 
     override fun settings() {
         size(800, 600, PConstants.P3D)
+        smooth(4)
+
     }
 
     override fun setup() {
@@ -62,48 +80,65 @@ class RubiksCube(val size: Int) : PApplet() {
     }
 
     override fun draw() {
-        faceLength = (height + width).toFloat() / 4f
+        faceLength = (height + width).toFloat() / 8f
+
+        translate(width / 2f, height / 2f)
+        rotateX(rotationX)
+        rotateZ(rotationZ)
+        pushMatrix()
+        translate(-faceLength / 2f, -faceLength / 2f)
 
         background(200)
         drawCube(cube)
+
+        popMatrix()
+
+        rotationZ += 0.002f
+    }
+
+    override fun keyPressed() {
+        if (keyCode == PConstants.SHIFT) {
+            clockwise = false
+        }
+
+        if (key in "Uu") {
+            cube = Cube(cube.faces.map { face -> face.rotated(clockwise) })
+        }
+    }
+
+    override fun keyReleased() {
+        if (keyCode == PConstants.SHIFT) {
+            clockwise = true
+        }
     }
 
     fun drawCube(cube: Cube) {
-        translate(width / 2f, height / 2f, -faceLength)
-        rotateX(rotationX)
-        rotateZ(rotationZ)
-
-        pushMatrix()
-        translate(-faceLength / 2f, -faceLength / 2f, 0f)
-
         drawFace(cube.faces[0], PVector(0f, 0f, 0f), PVector(faceLength, 0f, 0f), PVector(0f, faceLength, 0f))
         drawFace(cube.faces[1], PVector(0f, 0f, 0f), PVector(0f, faceLength, 0f), PVector(0f, 0f, faceLength))
         drawFace(cube.faces[2], PVector(0f, 0f, 0f), PVector(0f, 0f, faceLength), PVector(faceLength, 0f, 0f))
         drawFace(cube.faces[3], PVector(faceLength, faceLength, faceLength), PVector(-faceLength, 0f, 0f), PVector(0f, -faceLength, 0f))
         drawFace(cube.faces[4], PVector(faceLength, faceLength, faceLength), PVector(0f, -faceLength, 0f), PVector(0f, 0f, -faceLength))
         drawFace(cube.faces[5], PVector(faceLength, faceLength, faceLength), PVector(0f, 0f, -faceLength), PVector(-faceLength, 0f, 0f))
-
-        popMatrix()
     }
 
-    fun drawFace(face: Face, start: PVector, dir1: PVector, dir2: PVector) {
+    fun drawFace(face: Face, start: PVector, edge1: PVector, edge2: PVector) {
         for (i in 0 until face.size) {
             for (j in 0 until face.size) {
                 val p1 = start.copy()
-                    .add(dir1.copy().mult(i.toFloat() / face.size.toFloat()))
-                    .add(dir2.copy().mult(j.toFloat() / face.size.toFloat()))
+                    .add(edge1.copy().mult(i.toFloat() / face.size.toFloat()))
+                    .add(edge2.copy().mult(j.toFloat() / face.size.toFloat()))
 
                 val p2 = start.copy()
-                    .add(dir1.copy().mult((i + 1).toFloat() / face.size.toFloat()))
-                    .add(dir2.copy().mult(j.toFloat() / face.size.toFloat()))
+                    .add(edge1.copy().mult((i + 1).toFloat() / face.size.toFloat()))
+                    .add(edge2.copy().mult(j.toFloat() / face.size.toFloat()))
 
                 val p3 = start.copy()
-                    .add(dir1.copy().mult((i + 1).toFloat() / face.size.toFloat()))
-                    .add(dir2.copy().mult((j + 1).toFloat() / size.toFloat()))
+                    .add(edge1.copy().mult((i + 1).toFloat() / face.size.toFloat()))
+                    .add(edge2.copy().mult((j + 1).toFloat() / size.toFloat()))
 
                 val p4 = start.copy()
-                    .add(dir1.copy().mult(i.toFloat() / face.size.toFloat()))
-                    .add(dir2.copy().mult((j + 1).toFloat() / face.size.toFloat()))
+                    .add(edge1.copy().mult(i.toFloat() / face.size.toFloat()))
+                    .add(edge2.copy().mult((j + 1).toFloat() / face.size.toFloat()))
 
                 drawTile(face.tiles[i][j], p1, p2, p3, p4)
             }
@@ -132,5 +167,5 @@ fun main(args: Array<String>) {
     }
 
     println("creating cube of size: $size")
-    RubiksCube.run(size)
+    RubikCube.run(size)
 }
