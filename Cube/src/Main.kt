@@ -105,19 +105,19 @@ data class Cube(val faces: List<Face>) {
 
         if (clockwise) {
             for (i in 0 until size) {
-                val t = f5[size - i - 1][size - layer - 1]
-                f5[size - i - 1][size - layer - 1] = f3[size - layer - 1][i]
-                f3[size - layer - 1][i] = f2[size - i - 1][layer]
-                f2[size - i - 1][layer] = f0[layer][i]
-                f0[layer][i] = t
-            }
-        } else {
-            for (i in 0 until size) {
                 val t = f0[layer][i]
                 f0[layer][i] = f2[size - i - 1][layer]
                 f2[size - i - 1][layer] = f3[size - layer - 1][i]
                 f3[size - layer - 1][i] = f5[size - i - 1][size - layer - 1]
                 f5[size - i - 1][size - layer - 1] = t
+            }
+        } else {
+            for (i in 0 until size) {
+                val t = f5[size - i - 1][size - layer - 1]
+                f5[size - i - 1][size - layer - 1] = f3[size - layer - 1][i]
+                f3[size - layer - 1][i] = f2[size - i - 1][layer]
+                f2[size - i - 1][layer] = f0[layer][i]
+                f0[layer][i] = t
             }
         }
 
@@ -179,7 +179,7 @@ class RubikCube(val size: Int) : PApplet() {
         }
     }
 
-    val rotationSpeed = 0.02f
+    val rotationSpeed = 0.04f
 
     var cube = Cube.ofSize(size)//Cube(Tile.Color.values().map { color -> Face(List(size) { List(size) { Tile(Tile.Color.values().random()) } }) })
     var faceLength = 0f
@@ -239,8 +239,8 @@ class RubikCube(val size: Int) : PApplet() {
         when (key) {
             in "Uu" -> cube = cube.rotatedY(clockwise, 0)
             in "Dd" -> cube = cube.rotatedY(!clockwise, size - 1)
-            in "Rr" -> cube = cube.rotatedX(clockwise, size - 1)
-            in "Ll" -> cube = cube.rotatedX(!clockwise, 0)
+            in "Rr" -> cube = cube.rotatedX(!clockwise, size - 1)
+            in "Ll" -> cube = cube.rotatedX(clockwise, 0)
             in "Ff" -> cube = cube.rotatedZ(!clockwise, size - 1)
             in "Bb" -> cube = cube.rotatedZ(clockwise, 0)
             in "Nn" -> cube = Cube.ofSize(size)
