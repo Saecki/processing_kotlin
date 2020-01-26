@@ -1,5 +1,5 @@
 <component name="libraryTable">
-  <library name="library">
+  <library name="processing">
     <CLASSES>
       <root url="file:///opt/processing-3.5.3/core/library" />
     </CLASSES>

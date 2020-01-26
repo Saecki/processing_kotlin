@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="peasycam">
+    <CLASSES>
+      <root url="file://$USER_HOME$/sketchbook/libraries/peasycam/library" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <jarDirectory url="file://$USER_HOME$/sketchbook/libraries/peasycam/library" recursive="false" />
+  </library>
+</component>

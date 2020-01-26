@@ -1,21 +1,22 @@
 import processing.core.PApplet
 import processing.core.PConstants
 import processing.core.PVector
+import peasy.PeasyCam
+
 
 data class Tile(val color: Color) {
 
     enum class Color(val index: Int, val r: Int, val g: Int, val b: Int) {
-        WHITE(0, 255, 255, 255),
-        ORANGE(1, 255, 150, 0),
-        BLUE(2, 0, 0, 255),
-        YELLOW(3, 255, 255, 0),
-        RED(4, 255, 0, 0),
-        GREEN(5, 100, 255, 0)
+        WHITE(0, 230, 230, 230),
+        ORANGE(1, 240, 150, 0),
+        BLUE(2, 50, 50, 230),
+        YELLOW(3, 240, 240, 0),
+        RED(4, 230, 0, 20),
+        GREEN(5, 100, 220, 0)
     }
 }
 
 data class Face(val tiles: List<List<Tile>>) {
-
     val size: Int
         get() {
             return tiles.size
@@ -130,7 +131,7 @@ data class Cube(val faces: List<Face>) {
     }
 
     fun rotatedZ(clockwise: Boolean, layer: Int): Cube {
-        val newFaces = this.faces.toMutableList()
+        var newFaces = this.faces.toMutableList()
 
         when (layer) {
             0 -> newFaces[2] = faces[2].rotated(clockwise)
@@ -179,55 +180,90 @@ class RubikCube(val size: Int) : PApplet() {
         }
     }
 
-    val rotationSpeed = 0.04f
+    private val baseFaceVectors = listOf(
+        listOf(PVector(0f, 0f, 0f), PVector(1f, 0f, 0f), PVector(0f, 0f, 1f)),
+        listOf(PVector(0f, 0f, 0f), PVector(0f, 0f, 1f), PVector(0f, 1f, 0f)),
+        listOf(PVector(0f, 0f, 0f), PVector(0f, 1f, 0f), PVector(1f, 0f, 0f)),
+        listOf(PVector(1f, 1f, 1f), PVector(-1f, 0f, 0f), PVector(0f, 0f, -1f)),
+        listOf(PVector(1f, 1f, 1f), PVector(0f, 0f, -1f), PVector(0f, -1f, 0f)),
+        listOf(PVector(1f, 1f, 1f), PVector(0f, -1f, 0f), PVector(-1f, 0f, 0f))
+    )
+    private val rotationSpeed = 0.04
 
-    var cube = Cube.ofSize(size)//Cube(Tile.Color.values().map { color -> Face(List(size) { List(size) { Tile(Tile.Color.values().random()) } }) })
-    var faceLength = 0f
+    private var cube = Cube.ofSize(size)
+    private var faceLength = 0f
 
-    var up = false
-    var down = false
-    var right = false
-    var left = false
+    private var up = false
+    private var down = false
+    private var right = false
+    private var left = false
 
-    var rotationY = 0f
-    var rotationX = -PI / 8f
-    var clockwise = true
+    private var clockwise = true
+
+    private lateinit var cam: PeasyCam
+    private lateinit var faceVectors: List<List<PVector>>
+    private lateinit var screenFaceCoords: List<List<PVector>>
 
     override fun settings() {
         size(800, 600, PConstants.P3D)
-        smooth(4)
     }
 
     override fun setup() {
         surface.setResizable(true)
         stroke(50)
-        strokeWeight(3f)
+
+        faceLength = (height + width).toFloat() / 8f
+
+        cam = PeasyCam(this, faceLength * 2.0)
+        cam.wheelHandler = null
+        cam.setRightDragHandler(null)
+        cam.setCenterDragHandler(null)
     }
 
     override fun draw() {
-        faceLength = (height + width).toFloat() / 8f
-        if (up)
-            rotationX += rotationSpeed
-        if (down)
-            rotationX -= rotationSpeed
-        if (right)
-            rotationY += rotationSpeed
-        if (left)
-            rotationY -= rotationSpeed
 
-        translate(width / 2f, height / 2f)
-        rotateX(rotationX)
-        rotateY(rotationY)
-        pushMatrix()
+        faceLength = (height + width).toFloat() / 8f
+        faceVectors = baseFaceVectors.map {
+            it.map { vector ->
+                vector.copy().mult(faceLength)
+            }
+        }
+
+        cam.distance = faceLength * 2.0
+
+        if (down) cam.rotateX(rotationSpeed)
+        if (up) cam.rotateX(-rotationSpeed)
+        if (left) cam.rotateY(rotationSpeed)
+        if (right) cam.rotateY(-rotationSpeed)
+
+        strokeWeight(faceLength / 40)
         translate(-faceLength / 2f, -faceLength / 2f, -faceLength / 2f)
 
         background(50)
         drawCube(cube)
 
-        popMatrix()
+        screenFaceCoords = faceVectors.map {
+            listOf(
+                screenVector(it[0]),
+                screenVector(
+                    it[0].copy()
+                        .add(it[1])
+                ),
+                screenVector(
+                    it[0].copy()
+                        .add(it[1])
+                        .add(it[2])
+                ),
+                screenVector(
+                    it[0].copy()
+                        .add(it[2])
+                )
+            )
+        }
     }
 
     override fun keyPressed() {
+
         when (keyCode) {
             PConstants.SHIFT -> clockwise = false
             PConstants.UP -> up = true
@@ -244,6 +280,8 @@ class RubikCube(val size: Int) : PApplet() {
             in "Ff" -> cube = cube.rotatedZ(!clockwise, size - 1)
             in "Bb" -> cube = cube.rotatedZ(clockwise, 0)
             in "Nn" -> cube = Cube.ofSize(size)
+            in "Oo" -> ortho()
+            in "Pp" -> perspective()
         }
     }
 
@@ -257,16 +295,65 @@ class RubikCube(val size: Int) : PApplet() {
         }
     }
 
-    fun drawCube(cube: Cube) {
-        drawFace(cube.faces[0], PVector(0f, 0f, 0f), PVector(faceLength, 0f, 0f), PVector(0f, 0f, faceLength))
-        drawFace(cube.faces[1], PVector(0f, 0f, 0f), PVector(0f, 0f, faceLength), PVector(0f, faceLength, 0f))
-        drawFace(cube.faces[2], PVector(0f, 0f, 0f), PVector(0f, faceLength, 0f), PVector(faceLength, 0f, 0f))
-        drawFace(cube.faces[3], PVector(faceLength, faceLength, faceLength), PVector(-faceLength, 0f, 0f), PVector(0f, 0f, -faceLength))
-        drawFace(cube.faces[4], PVector(faceLength, faceLength, faceLength), PVector(0f, 0f, -faceLength), PVector(0f, -faceLength, 0f))
-        drawFace(cube.faces[5], PVector(faceLength, faceLength, faceLength), PVector(0f, -faceLength, 0f), PVector(-faceLength, 0f, 0f))
+    override fun mousePressed() {
+        val mouseVector = PVector(mouseX.toFloat(), mouseY.toFloat())
+        val insideFaces = screenFaceCoords.map { insidePolygon(mouseVector, it) }
+        for (i in insideFaces.indices) {
+            if (insideFaces[i])
+                println(Tile.Color.values()[i])
+        }
     }
 
-    fun drawFace(face: Face, start: PVector, edge1: PVector, edge2: PVector) {
+    private fun insidePolygon(point: PVector, polygon: List<PVector>): Boolean {
+        if (polygon.size < 3) return false
+
+        for (i in 0 until polygon.size - 3) {
+            if (insideTriangle(point, polygon[i], polygon[i + 1], polygon[i + 2])) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private fun insideTriangle(p0: PVector, p1: PVector, p2: PVector, p3: PVector): Boolean {
+        val p1P2 = dist(p1, p2)
+        val p2P3 = dist(p2, p3)
+        val p3P1 = dist(p3, p1)
+
+        val p0P1 = dist(p0, p1)
+        val p0P2 = dist(p0, p2)
+        val p0P3 = dist(p0, p3)
+
+        val areaCombined = areaOfTriangle(p1P2, p2P3, p3P1)
+        val area1 = areaOfTriangle(p0P1, p1P2, p0P2)
+        val area2 = areaOfTriangle(p0P2, p2P3, p0P3)
+        val area3 = areaOfTriangle(p0P3, p3P1, p0P1)
+
+        return (areaCombined >= area1 + area2 + area3)
+    }
+
+    private fun areaOfTriangle(a: Float, b: Float, c: Float): Float {
+        val s = (a + b + c) / 2
+        return s * (s - a) * (s - b) * (s - c)
+    }
+
+    private fun dist(v1: PVector, v2: PVector) = dist(v1.x, v1.y, v2.x, v2.y)
+
+    private fun screenX(vector: PVector) = screenX(vector.x, vector.y, vector.z)
+
+    private fun screenY(vector: PVector) = screenY(vector.x, vector.y, vector.z)
+
+    private fun screenVector(vector: PVector) = PVector(screenX(vector), screenY(vector))
+
+    private fun drawCube(cube: Cube) {
+        for (i in cube.faces.indices) {
+            drawFace(cube.faces[i], faceVectors[i][0], faceVectors[i][1], faceVectors[i][2])
+        }
+    }
+
+    private fun drawFace(face: Face, start: PVector, edge1: PVector, edge2: PVector) {
+
         for (i in 0 until face.size) {
             for (j in 0 until face.size) {
                 val p1 = start.copy()
@@ -290,7 +377,7 @@ class RubikCube(val size: Int) : PApplet() {
         }
     }
 
-    fun drawTile(tile: Tile, p1: PVector, p2: PVector, p3: PVector, p4: PVector) {
+    private fun drawTile(tile: Tile, p1: PVector, p2: PVector, p3: PVector, p4: PVector) {
         fill(tile.color.r.toFloat(), tile.color.g.toFloat(), tile.color.b.toFloat())
         beginShape()
         vertex(p1.x, p1.y, p1.z)
@@ -303,6 +390,7 @@ class RubikCube(val size: Int) : PApplet() {
 
 fun main(args: Array<String>) {
     var size = 3
+
     try {
         size = args[0].toInt()
     } catch (e: NumberFormatException) {
