@@ -1,12 +1,6 @@
 import processing.core.PApplet.*
 import java.util.*
 
-private const val DEFAULT_START_DELAY = 2000L
-private const val DEFAULT_ITEM_LIMIT = 5
-private const val DEFAULT_ITEM_SPAWN_RATE = 0.005
-private const val MIN_ITEM_DIST = 50f
-private const val MIN_WALL_DIST = 150f
-
 class World {
 
     enum class State() {
@@ -14,6 +8,14 @@ class World {
         RUNNING,
         PAUSED,
         STOPPED,
+    }
+
+    companion object {
+        private const val DEFAULT_START_DELAY = 2000L
+        private const val DEFAULT_ITEM_LIMIT = 5
+        private const val DEFAULT_ITEM_SPAWN_RATE = 0.001
+        private const val MIN_ITEM_DIST = 100f
+        private const val MIN_WALL_DIST = 150f
     }
 
     private val itemLimit: Int
@@ -33,6 +35,9 @@ class World {
     lateinit var player2: Player
 
     fun init() {
+        printD("##############################\n")
+        printD("-------------init-------------\n")
+        printD("##############################\n")
         startTime = Time.now + DEFAULT_START_DELAY
         player1 = randomPlayer()
         player2 = randomPlayer(player1)
@@ -70,31 +75,33 @@ class World {
 
     fun restart() {
         if (state == State.PAUSED || state == State.STOPPED) {
-            startTime = Time.now + DEFAULT_START_DELAY
+            printD("############\n")
+            printD("restart\n")
             items = mutableListOf()
             state = State.STARTING
+            startTime = Time.now + DEFAULT_START_DELAY
 
             val p1Coords = randomCoordinates()
-            val p2Coords = randomCoordinates()
+            val p2Coords = randomCoordinates(player1)
             player1.reset(p1Coords.first, p1Coords.second)
             player2.reset(p2Coords.first, p2Coords.second)
+        }
+    }
+
+    fun crashed(player: Player) {
+        stop()
+        if (player == player1) {
+            printD("player 1 crashed\n")
+            player2.score++
+        } else {
+            printD("player 2 crashed\n")
+            player1.score++
         }
     }
 
     fun clearPlayerTrails() {
         player1.clearTrail()
         player2.clearTrail()
-    }
-
-    fun crashed(player: Player) {
-        stop()
-        if (player == player1) {
-            printD("player1 crashed\n")
-            player2.score++
-        } else {
-            printD("player2 crashed\n")
-            player1.score++
-        }
     }
 
     private fun spawnItems(spawnRate: Double) {
@@ -106,7 +113,7 @@ class World {
     }
 
     private fun randomPlayer(vararg other: Player): Player {
-        val coordinates = randomCoordinates(*other.map { Pair(it.x, it.y) }.toTypedArray())
+        val coordinates = randomCoordinates(*other)
         val x = coordinates.first
         val y = coordinates.second
         val angle = Math.random().toFloat() * TAU
@@ -117,8 +124,8 @@ class World {
         return Player(x, y, angle, remainingColors.random(), this)
     }
 
-    private fun randomItem(vararg other: Player): Item {
-        val coordinates = randomCoordinates()
+    private fun randomItem(): Item {
+        val coordinates = randomCoordinates(player1, player2)
         val x = coordinates.first
         val y = coordinates.second
         val type = Effect.itemEffects.random()
@@ -126,7 +133,7 @@ class World {
         return Item(x, y, type)
     }
 
-    private fun randomCoordinates(vararg other: Pair<Float, Float>): Pair<Float, Float> {
+    private fun randomCoordinates(vararg other: Player): Pair<Float, Float> {
         val r = Random()
         var x = 0f
         var y = 0f
@@ -143,8 +150,8 @@ class World {
                 }
             }
 
-            for (c in other) {
-                if (dist(x, y, c.first, c.second) < MIN_ITEM_DIST) {
+            for (p in other) {
+                if (Player.intersectsWithPlayer(x, y, Item.RADIUS + MIN_ITEM_DIST, p)) {
                     tooClose = true
                     break
                 }

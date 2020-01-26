@@ -60,7 +60,7 @@ class CurveFever() : PApplet() {
         when (key) {
             in "Aa" -> p2CW = true
             in "Dd" -> p2CCW = true
-            in "Rr" -> world.restart()
+            ' ' -> world.restart()
             ESC -> menu()
         }
 
@@ -108,11 +108,11 @@ class CurveFever() : PApplet() {
         textSize(14f)
         setFill(world.player2.color)
         textAlign(LEFT, TOP)
-        text("Player 2: ${world.player2.score}", 10f, 10f)
+        text("Player 2 ~ ${world.player2.score}", 10f, 10f)
 
         setFill(world.player1.color)
         textAlign(RIGHT, TOP)
-        text("Player 1: ${world.player1.score}", width - 10f, 10f)
+        text("Player 1 ~ ${world.player1.score}", width - 10f, 10f)
 
         if (world.state == World.State.STARTING) {
             textAlign(CENTER, CENTER)
@@ -129,9 +129,11 @@ class CurveFever() : PApplet() {
             drawPlayerTrailSection(ts)
         }
 
-        noStroke()
-        setFill(player.color)
-        circle(player.x, player.y, player.thickness)
+        if (player.gap || player.trail.isEmpty()) {
+            noStroke()
+            setFill(player.color)
+            circle(player.x, player.y, player.thickness)
+        }
 
         if (world.state == World.State.STARTING)
             drawPlayerDirectionArrow(player)
@@ -213,7 +215,7 @@ class CurveFever() : PApplet() {
 fun main(args: Array<String>) {
 
     if (args.isNotEmpty())
-        if (args[0] == "d"){
+        if (args[0] == "d") {
             DEBUG = true
             println("DEBUG")
         }

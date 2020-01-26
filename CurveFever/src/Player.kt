@@ -1,14 +1,6 @@
 import processing.core.PApplet.*
 import kotlin.math.absoluteValue
 
-private const val BASE_SPEED = 150f
-private const val MIN_SPEED = 50f
-private const val BASE_TURNING_RADIUS = 50f
-private const val MIN_TURNING_RADIUS = 25f
-private const val BASE_THICKNESS = 4f
-private const val MIN_THICKNESS = 1f
-private const val GAP_RATE = 0.4
-
 data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World) {
 
     abstract class TrailSection(val x1: Float, val y1: Float, val direction: Direction, val gap: Boolean, val thickness: Float) {
@@ -22,7 +14,6 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         override fun lastPosition() = Pair(x2, y2)
 
         override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
-            printD("linear")
             val p1Dist = dist(x1, y1, x, y)
             val p2Dist = dist(x2, y2, x, y)
 
@@ -32,22 +23,36 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
             if (p2Dist < this.thickness / 2 + thickness / 2)
                 return true
 
-            val lineAngle = angle(x1, y1, x2, y2)
-            val oppositeLineAngle = lineAngle + PI
+            val centerLineAngle = floorMod(angle(x1, y1, x2, y2), TAU)
+            val inverseCenterLineAngle = floorMod(centerLineAngle + PI, TAU)
 
-            val xL1 = x1 + cos(lineAngle - HALF_PI) * this.thickness / 2
-            val yL1 = y1 + sin(lineAngle - HALF_PI) * this.thickness / 2
-            val xL2 = x1 - cos(lineAngle - HALF_PI) * this.thickness / 2
-            val yL2 = y1 - sin(lineAngle - HALF_PI) * this.thickness / 2
+            val xL1 = x1 + cos(centerLineAngle - HALF_PI) * this.thickness / 2
+            val yL1 = y1 + sin(centerLineAngle - HALF_PI) * this.thickness / 2
+            val xL2 = x1 - cos(centerLineAngle - HALF_PI) * this.thickness / 2
+            val yL2 = y1 - sin(centerLineAngle - HALF_PI) * this.thickness / 2
 
             val maxDist = dist(x2, y2, xL1, yL1)
 
-            if (p1Dist < maxDist && p2Dist < maxDist) {
-                val angleL1 = angle(xL1, yL1, x, y)
-                val angleL2 = angle(xL2, yL2, x, y)
+            if (p1Dist > maxDist || p2Dist > maxDist)
+                return false
 
-                if (angleL1 in lineAngle..oppositeLineAngle != angleL2 in lineAngle..oppositeLineAngle)
+            val angleL1 = floorMod(angle(xL1, yL1, x, y), TAU)
+            val angleL2 = floorMod(angle(xL2, yL2, x, y), TAU)
+
+            if (centerLineAngle < inverseCenterLineAngle) {
+                if ((angleL1 > centerLineAngle && angleL1 < inverseCenterLineAngle)
+                    != (angleL2 > centerLineAngle && angleL2 < inverseCenterLineAngle)
+                ) {
+                    printD("linear\n")
                     return true
+                }
+            } else {
+                if ((angleL1 > centerLineAngle || angleL1 < inverseCenterLineAngle)
+                    != (angleL2 > centerLineAngle || angleL2 < inverseCenterLineAngle)
+                ) {
+                    printD("linear\n")
+                    return true
+                }
             }
 
             return false
@@ -70,24 +75,40 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         }
 
         override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
-            printD("arc")
-            val minDist = this.radius - this.thickness / 2 - thickness / 2
-            val maxDist = this.radius + this.thickness / 2 + thickness / 2
+            val p1Dist = dist(x1, y1, x, y)
+            val lastPos = lastPosition()
+            val p2Dist = dist(lastPos.first, lastPos.second, x, y)
+
+            if (p1Dist < this.thickness / 2 + thickness / 2)
+                return true
+
+            if (p2Dist < this.thickness / 2 + thickness / 2)
+                return true
+
+            val minDist = radius - this.thickness / 2 - thickness / 2
+            val maxDist = radius + this.thickness / 2 + thickness / 2
 
             val arcCenterX = x1 - cos(startAngle) * radius
             val arcCenterY = y1 - sin(startAngle) * radius
 
             val arcCenterDist = dist(arcCenterX, arcCenterY, x, y).absoluteValue
 
-            if (arcCenterDist > minDist && arcCenterDist < maxDist) {
-                val arcStartAngle = floorMod(if (direction == Direction.CLOCKWISE) startAngle else endAngle, TAU)
-                val arcEndAngle = floorMod(if (direction == Direction.CLOCKWISE) endAngle else startAngle, TAU)
-                val arcAngle = floorMod(angle(arcCenterX, arcCenterY, x, y), TAU)
+            if (arcCenterDist < minDist || arcCenterDist > maxDist)
+                return false
 
-                return if (arcStartAngle < arcEndAngle) {
-                    arcAngle > arcStartAngle && arcAngle < arcEndAngle
-                } else {
-                    arcAngle > arcStartAngle || arcAngle < arcEndAngle
+            val arcStartAngle = floorMod(if (direction == Direction.CLOCKWISE) startAngle else endAngle, TAU)
+            val arcEndAngle = floorMod(if (direction == Direction.CLOCKWISE) endAngle else startAngle, TAU)
+            val arcAngle = floorMod(angle(arcCenterX, arcCenterY, x, y), TAU)
+
+            if (arcStartAngle < arcEndAngle) {
+                if (arcAngle > arcStartAngle && arcAngle < arcEndAngle) {
+                    printD("arc\n")
+                    return true
+                }
+            } else {
+                if (arcAngle > arcStartAngle || arcAngle < arcEndAngle) {
+                    printD("arc\n")
+                    return true
                 }
             }
 
@@ -99,6 +120,38 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         STRAIGHT(0),
         COUNTER_CLOCKWISE(-1),
         CLOCKWISE(1)
+    }
+
+    companion object {
+        private const val BASE_SPEED = 150f
+        private const val MIN_SPEED = 50f
+        private const val BASE_TURNING_RADIUS = 50f
+        private const val MIN_TURNING_RADIUS = 25f
+        private const val BASE_THICKNESS = 4f
+        private const val MIN_THICKNESS = 1f
+        private const val GAP_RATE = 0.4
+
+        fun intersectsWithPlayer(x: Float, y: Float, thickness: Float, other: Player): Boolean {
+            if (intersectsWithTrail(x, y, thickness, other.trail))
+                return true
+
+            if (dist(other.x, other.y, x, y) < other.thickness / 2 + thickness / 2)
+                return true
+
+            return false
+        }
+
+        fun intersectsWithTrail(x: Float, y: Float, thickness: Float, trail: List<TrailSection>): Boolean {
+            for (ts in trail) {
+                if (ts.gap)
+                    continue
+
+                if (ts.intersectsWith(x, y, thickness))
+                    return true
+            }
+
+            return false
+        }
     }
 
     var effects = mutableListOf<Effect>()
@@ -212,42 +265,31 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
     }
 
     private fun checkForCrash() {
-        if (x < thickness / 2 || x > Specs.width - thickness / 2 ||
-            y < thickness / 2 || y > Specs.height - thickness / 2
+        if (x < thickness / 2 || x > Specs.width - thickness / 2
+            || y < thickness / 2 || y > Specs.height - thickness / 2
         )
             world.crashed(this)
 
         val other = if (world.player1 == this) world.player2 else world.player1
 
-        if (intersectsWithPlayer(other))
+        if (intersectsWithPlayer(this.x, this.y, this.thickness, other))
             world.crashed(this)
+
+        if (intersectsOwnTrail()) {
+            world.crashed(this)
+        }
     }
 
-    private fun intersectsWithPlayer(other: Player): Boolean {
-        if (intersectsWithTrail(other.trail))
-            return true
+    private fun intersectsOwnTrail(): Boolean {
+        val trailToCheck = trail.filter {
+            val minDist = thickness / 2 + it.thickness / 2
+            val endPos = it.lastPosition()
+            val endDist = dist(x, y, endPos.first, endPos.second)
 
-        if (dist(other.x, other.y, x, y) < other.thickness / 2 + thickness / 2)
-            return true
-
-        return false
-    }
-
-    private fun intersectsWithTrail(trail: List<TrailSection>): Boolean {
-        for (ts in trail) {
-            if (ts.gap)
-                continue
-
-            printD("<")
-            if (ts.intersectsWith(this.x, this.y, this.thickness)) {
-                printD(">: ")
-                return true
-            } else {
-                printD(">\n")
-            }
+            endDist > minDist
         }
 
-        return false
+        return intersectsWithTrail(this.x, this.y, this.thickness, trailToCheck)
     }
 
     private fun collectItems() {
