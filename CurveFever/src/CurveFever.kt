@@ -1,4 +1,5 @@
 import processing.core.PApplet
+import processing.core.PConstants
 
 class CurveFever() : PApplet() {
 
@@ -20,6 +21,13 @@ class CurveFever() : PApplet() {
     val menu: Boolean
         get() = world.state == World.State.STOPPED || world.state == World.State.PAUSED
 
+    val selectionFields = 3
+
+    var playerMenu = false
+    var selectedPlayerIndex = 0
+    var selectedPlayerField = 0
+    var selectionActive = false
+
     override fun settings() {
         size(1280, 720)
     }
@@ -27,7 +35,7 @@ class CurveFever() : PApplet() {
     override fun setup() {
         surface.setResizable(true)
 
-        frameRate(144f)
+        frameRate(240f)
 
         update()
         world.init()
@@ -46,23 +54,63 @@ class CurveFever() : PApplet() {
         if (menu)
             drawMenu()
 
-        drawHUD()
+        if (!playerMenu)
+            drawHUD()
     }
 
     override fun keyPressed() {
 
-        when (key) {
-            ' ' -> world.restart()
-            ESC -> menu()
-        }
-
-        world.players.forEach {
-            when (keyCode) {
-                it.leftKey -> it.leftPressed = true
-                it.rightKey -> it.rightPressed = true
+        if (playerMenu) {
+            when (key) {
+                ESC -> playerMenu = false
+                ENTER -> toggleSelection()
+                '+' -> if (!selectionActive) world.addPlayer()
+                '-' -> if (!selectionActive) {
+                    world.removePlayer(selectedPlayerIndex)
+                    if (selectedPlayerIndex > world.players.size - 1)
+                        selectedPlayerIndex = world.players.size - 1
+                }
             }
 
-            it.turn()
+            when (keyCode) {
+                LEFT -> selectionLeft()
+                RIGHT -> selectionRight()
+                UP -> selectionUp()
+                DOWN -> selectionDown()
+            }
+
+            if (selectionActive) {
+                when (selectedPlayerField) {
+                    0 -> if (key == BACKSPACE) {
+                        world.players[selectedPlayerIndex].name = world.players[selectedPlayerIndex].name.dropLast(1)
+                    } else if (keyCode != SHIFT && key != ENTER) {
+                        world.players[selectedPlayerIndex].name += key
+                    }
+                    1 -> if (key != ENTER) {
+                        world.players[selectedPlayerIndex].leftKeyCode = keyCode
+                        world.players[selectedPlayerIndex].leftKey = key
+                    }
+                    2 -> if (key != ENTER) {
+                        world.players[selectedPlayerIndex].rightKeyCode = keyCode
+                        world.players[selectedPlayerIndex].rightKey = key
+                    }
+                }
+            }
+        } else {
+            when (key) {
+                ' ' -> world.restart()
+                ESC -> menu()
+                in "Pp" -> if (world.state == World.State.STOPPED) playerMenu = true
+            }
+
+            world.players.forEach {
+                when (keyCode) {
+                    it.leftKeyCode -> it.leftPressed = true
+                    it.rightKeyCode -> it.rightPressed = true
+                }
+
+                it.turn()
+            }
         }
 
         key = ' '
@@ -72,8 +120,8 @@ class CurveFever() : PApplet() {
     override fun keyReleased() {
         world.players.forEach {
             when (keyCode) {
-                it.leftKey -> it.leftPressed = false
-                it.rightKey -> it.rightPressed = false
+                it.leftKeyCode -> it.leftPressed = false
+                it.rightKeyCode -> it.rightPressed = false
             }
 
             it.turn()
@@ -90,20 +138,60 @@ class CurveFever() : PApplet() {
         noStroke()
         fill(0, 100f)
         rect(0f, 0f, width.toFloat(), height.toFloat())
+
+        if (playerMenu) {
+            val rectWidth = width / 5f
+            val rectHeight = height / 8f
+
+            world.players.forEachIndexed { index, player ->
+
+                //name
+                setFill(player.color)
+                textAlign(CENTER, CENTER)
+                textSize(rectHeight / 2f)
+                text(player.name, width / 2f - rectWidth * 1f, rectHeight * (index + 0.5f))
+
+                //left key
+                fill(200)
+                text(player.leftKey, width / 2f, rectHeight * (index + 0.5f))
+
+                //right key
+                text(player.rightKey, width / 2f + rectWidth * 1, rectHeight * (index + 0.5f))
+            }
+
+            //selection
+            noFill()
+            if (selectionActive)
+                stroke(200)
+            else
+                stroke(100)
+            strokeWeight(4f)
+            rect(width / 2 + rectWidth * (-1.5f + selectedPlayerField), rectHeight * selectedPlayerIndex, rectWidth, rectHeight)
+
+        } else if (world.state == World.State.STOPPED) {
+            val text = """
+                SPACE : restart
+                P : manage players
+                """.trimIndent()
+            fill(200)
+            textAlign(CENTER, CENTER)
+            textSize(20f)
+            text(text, width / 2f, height / 2f)
+        }
     }
 
     private fun drawHUD() {
+        textAlign(LEFT, TOP)
         textSize(14f)
 
         world.players.forEachIndexed { index, p ->
             setFill(p.color)
-            textAlign(LEFT, TOP)
             text("${p.name} : ${p.score}", 10f, 10 + index * 20f)
         }
 
         if (world.state == World.State.STARTING) {
-            textAlign(CENTER, CENTER)
             fill(230)
+            textAlign(CENTER, CENTER)
             textSize(30f)
             text(((world.startTime - Time.now) / 1000 + 1).toInt(), width / 2f, height / 2f)
         }
@@ -189,6 +277,39 @@ class CurveFever() : PApplet() {
 
     private fun hideMenu() {
         world.resume()
+    }
+
+    private fun toggleSelection() {
+        selectionActive = !selectionActive
+    }
+
+    private fun selectionLeft() {
+        if (selectionActive) {
+        } else {
+            selectedPlayerField = floorMod(--selectedPlayerField, selectionFields)
+        }
+    }
+
+    private fun selectionRight() {
+        if (selectionActive) {
+
+        } else {
+            selectedPlayerField = (selectedPlayerField + 1) % selectionFields
+        }
+    }
+
+    private fun selectionUp() {
+        if (selectionActive) {
+        } else {
+            selectedPlayerIndex = floorMod(--selectedPlayerIndex, world.players.size)
+        }
+    }
+
+    private fun selectionDown() {
+        if (selectionActive) {
+        } else {
+            selectedPlayerIndex = (selectedPlayerIndex + 1) % world.players.size
+        }
     }
 
     private fun setFill(color: Color) = fill(color.r, color.g, color.b)

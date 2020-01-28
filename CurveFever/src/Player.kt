@@ -1,7 +1,7 @@
 import processing.core.PApplet.*
 import kotlin.math.absoluteValue
 
-data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World, val name: String) {
+data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World, var name: String) {
 
     enum class Direction(val factor: Int) {
         STRAIGHT(0),
@@ -35,8 +35,11 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         }
     }
 
-    var leftKey: Int = 0
-    var rightKey: Int = 0
+    var leftKeyCode: Int = 0
+    var rightKeyCode: Int = 0
+
+    var leftKey: Char = ' '
+    var rightKey: Char = ' '
 
     var leftPressed = false
     var rightPressed = false

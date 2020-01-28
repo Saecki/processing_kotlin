@@ -12,6 +12,16 @@ fun floorMod(a: Float, b: Float): Float {
     return result % b
 }
 
+fun floorMod(a: Int, b: Int): Int {
+    var result = a
+
+    while (result < 0) {
+        result += b
+    }
+
+    return result % b
+}
+
 fun angle(x1: Float, y1: Float, x2: Float, y2: Float): Float {
     val xDist = x2 - x1
     val yDist = y2 - y1

@@ -24,7 +24,7 @@ class World {
     private val itemSpawnRate: Double
         get() = DEFAULT_ITEM_SPAWN_RATE
 
-    var state = State.STARTING
+    var state = State.STOPPED
         private set
 
     var startTime = 0L
@@ -45,10 +45,14 @@ class World {
         players.add(randomPlayer("Player 2", *players.toTypedArray()))
 
         //TODO add menu to set keys
-        players[0].leftKey = LEFT
-        players[0].rightKey = RIGHT
-        players[1].leftKey = 65
-        players[1].rightKey = 68
+        players[0].leftKeyCode = LEFT
+        players[0].rightKeyCode = RIGHT
+        players[0].leftKey = ' '
+        players[0].rightKey = ' '
+        players[1].leftKeyCode = 65
+        players[1].rightKeyCode = 68
+        players[1].leftKey = 'a'
+        players[1].rightKey = 'd'
     }
 
     fun update() {
@@ -110,6 +114,18 @@ class World {
 
     fun clearPlayerTrails() {
         players.forEach { it.clearTrail() }
+    }
+
+    fun addPlayer() {
+        if (players.size < Color.PLAYER_COLORS.size) {
+            val player = randomPlayer("Player${players.size + 1}", *players.toTypedArray())
+            players.add(player)
+        }
+    }
+
+    fun removePlayer(index: Int) {
+        if (players.size > 2)
+            players.removeAt(index)
     }
 
     private fun spawnItems(spawnRate: Double) {
