@@ -9,7 +9,6 @@ object Time {
     }
 
     var deltaTime = 0f
-        get() = if (DEBUG) 0.016f else field
         private set
 
     val now

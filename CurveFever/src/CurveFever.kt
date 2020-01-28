@@ -27,6 +27,8 @@ class CurveFever() : PApplet() {
     override fun setup() {
         surface.setResizable(true)
 
+        frameRate(144f)
+
         update()
         world.init()
         background(50)
@@ -38,11 +40,8 @@ class CurveFever() : PApplet() {
 
         background(50)
 
-        world.items.forEach {
-            drawItem(it)
-        }
-        drawPlayer(world.player1)
-        drawPlayer(world.player2)
+        world.items.forEach { drawItem(it) }
+        world.players.forEach { drawPlayer(it) }
 
         if (menu)
             drawMenu()
@@ -52,50 +51,39 @@ class CurveFever() : PApplet() {
 
     override fun keyPressed() {
 
-        when (keyCode) {
-            LEFT -> p1CW = true
-            RIGHT -> p1CCW = true
-        }
-
         when (key) {
-            in "Aa" -> p2CW = true
-            in "Dd" -> p2CCW = true
             ' ' -> world.restart()
             ESC -> menu()
         }
 
-        world.player1.turn(direction(p1CW, p1CCW))
-        world.player2.turn(direction(p2CW, p2CCW))
+        world.players.forEach {
+            when (keyCode) {
+                it.leftKey -> it.leftPressed = true
+                it.rightKey -> it.rightPressed = true
+            }
+
+            it.turn()
+        }
 
         key = ' '
         keyCode = 0
     }
 
     override fun keyReleased() {
-        when (keyCode) {
-            LEFT -> p1CW = false
-            RIGHT -> p1CCW = false
-        }
+        world.players.forEach {
+            when (keyCode) {
+                it.leftKey -> it.leftPressed = false
+                it.rightKey -> it.rightPressed = false
+            }
 
-        when (key) {
-            in "Aa" -> p2CW = false
-            in "Dd" -> p2CCW = false
+            it.turn()
         }
-
-        world.player1.turn(direction(p1CW, p1CCW))
-        world.player2.turn(direction(p2CW, p2CCW))
     }
 
     private fun update() {
         Time.update()
         Specs.width = width
         Specs.height = height
-    }
-
-    private fun direction(cw: Boolean, ccw: Boolean) = when {
-        cw == ccw -> Player.Direction.STRAIGHT
-        cw -> Player.Direction.COUNTER_CLOCKWISE
-        else -> Player.Direction.CLOCKWISE
     }
 
     private fun drawMenu() {
@@ -106,13 +94,12 @@ class CurveFever() : PApplet() {
 
     private fun drawHUD() {
         textSize(14f)
-        setFill(world.player2.color)
-        textAlign(LEFT, TOP)
-        text("Player 2 ~ ${world.player2.score}", 10f, 10f)
 
-        setFill(world.player1.color)
-        textAlign(RIGHT, TOP)
-        text("Player 1 ~ ${world.player1.score}", width - 10f, 10f)
+        world.players.forEachIndexed { index, p ->
+            setFill(p.color)
+            textAlign(LEFT, TOP)
+            text("${p.name} : ${p.score}", 10f, 10 + index * 20f)
+        }
 
         if (world.state == World.State.STARTING) {
             textAlign(CENTER, CENTER)
@@ -125,7 +112,7 @@ class CurveFever() : PApplet() {
     private fun drawPlayer(player: Player) {
         setStroke(player.color)
         noFill()
-        for (ts: Player.TrailSection in player.trail) {
+        for (ts: TrailSection in player.trail) {
             drawPlayerTrailSection(ts)
         }
 
@@ -139,19 +126,16 @@ class CurveFever() : PApplet() {
             drawPlayerDirectionArrow(player)
     }
 
-    private fun drawPlayerTrailSection(ts: Player.TrailSection) {
+    private fun drawPlayerTrailSection(ts: TrailSection) {
         if (ts.gap) return
 
         strokeWeight(ts.thickness)
 
         when (ts.direction) {
-            Player.Direction.STRAIGHT -> with(ts as Player.LinearTrailSection) {
+            Player.Direction.STRAIGHT -> with(ts as LinearTrailSection) {
                 line(x1, y1, x2, y2)
             }
-            else -> with(ts as Player.ArcTrailSection) {
-                val arcCenterX = x1 - cos(startAngle) * radius
-                val arcCenterY = y1 - sin(startAngle) * radius
-
+            else -> with(ts as ArcTrailSection) {
                 val arcStartAngle = if (startAngle > endAngle) endAngle else startAngle
                 val arcEndAngle = if (startAngle > endAngle) startAngle else endAngle
 

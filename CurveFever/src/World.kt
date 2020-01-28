@@ -13,7 +13,7 @@ class World {
     companion object {
         private const val DEFAULT_START_DELAY = 2000L
         private const val DEFAULT_ITEM_LIMIT = 5
-        private const val DEFAULT_ITEM_SPAWN_RATE = 0.001
+        private const val DEFAULT_ITEM_SPAWN_RATE = 0.002
         private const val MIN_ITEM_DIST = 100f
         private const val MIN_WALL_DIST = 150f
     }
@@ -31,16 +31,24 @@ class World {
         private set
 
     var items = mutableListOf<Item>()
-    lateinit var player1: Player
-    lateinit var player2: Player
+
+    var players = mutableListOf<Player>()
 
     fun init() {
         printD("##############################\n")
         printD("-------------init-------------\n")
         printD("##############################\n")
         startTime = Time.now + DEFAULT_START_DELAY
-        player1 = randomPlayer()
-        player2 = randomPlayer(player1)
+
+        //TODO add menu to add players
+        players.add(randomPlayer("Player 1"))
+        players.add(randomPlayer("Player 2", *players.toTypedArray()))
+
+        //TODO add menu to set keys
+        players[0].leftKey = LEFT
+        players[0].rightKey = RIGHT
+        players[1].leftKey = 65
+        players[1].rightKey = 68
     }
 
     fun update() {
@@ -51,10 +59,8 @@ class World {
             }
             State.RUNNING -> {
                 spawnItems(itemSpawnRate)
-                player1.update()
-                player2.update()
-                player1.postUpdate()
-                player2.postUpdate()
+                players.forEach { it.update() }
+                players.forEach { it.postUpdate() }
             }
         }
     }
@@ -81,27 +87,29 @@ class World {
             state = State.STARTING
             startTime = Time.now + DEFAULT_START_DELAY
 
-            val p1Coords = randomCoordinates()
-            val p2Coords = randomCoordinates(player1)
-            player1.reset(p1Coords.first, p1Coords.second)
-            player2.reset(p2Coords.first, p2Coords.second)
+            val newPlayers = mutableListOf<Player>()
+
+            for (p in players) {
+                val coords = randomCoordinates(*newPlayers.toTypedArray())
+
+                p.reset(coords.first, coords.second)
+                newPlayers.add(p)
+            }
         }
     }
 
-    fun crashed(player: Player) {
-        stop()
-        if (player == player1) {
-            printD("player 1 crashed\n")
-            player2.score++
-        } else {
-            printD("player 2 crashed\n")
-            player1.score++
+    fun crashed(player: Player, msg: String) {
+        player.crashed = true
+        printD("${player.name} $msg\n")
+
+        if (players.sumBy { if (it.crashed) 0 else 1 } < 2) {
+            players.forEach { if (!it.crashed) it.score++ }
+            stop()
         }
     }
 
     fun clearPlayerTrails() {
-        player1.clearTrail()
-        player2.clearTrail()
+        players.forEach { it.clearTrail() }
     }
 
     private fun spawnItems(spawnRate: Double) {
@@ -112,20 +120,20 @@ class World {
         }
     }
 
-    private fun randomPlayer(vararg other: Player): Player {
-        val coordinates = randomCoordinates(*other)
+    private fun randomPlayer(name: String, vararg others: Player): Player {
+        val coordinates = randomCoordinates(*others)
         val x = coordinates.first
         val y = coordinates.second
         val angle = Math.random().toFloat() * TAU
         val remainingColors = Color.PLAYER_COLORS.toMutableList()
 
-        remainingColors.removeAll(other.map { it.color })
+        remainingColors.removeAll(others.map { it.color })
 
-        return Player(x, y, angle, remainingColors.random(), this)
+        return Player(x, y, angle, remainingColors.random(), this, name)
     }
 
     private fun randomItem(): Item {
-        val coordinates = randomCoordinates(player1, player2)
+        val coordinates = randomCoordinates(*players.toTypedArray())
         val x = coordinates.first
         val y = coordinates.second
         val type = Effect.itemEffects.random()
@@ -133,12 +141,12 @@ class World {
         return Item(x, y, type)
     }
 
-    private fun randomCoordinates(vararg other: Player): Pair<Float, Float> {
+    private fun randomCoordinates(vararg others: Player): Pair<Float, Float> {
         val r = Random()
         var x = 0f
         var y = 0f
 
-        for (i in 0..20) {
+        for (i in 0..50) {
             x = r.nextInt(Specs.width - (MIN_WALL_DIST * 2).toInt()).toFloat() + MIN_WALL_DIST
             y = r.nextInt(Specs.height - (MIN_WALL_DIST * 2).toInt()).toFloat() + MIN_WALL_DIST
             var tooClose = false
@@ -150,8 +158,8 @@ class World {
                 }
             }
 
-            for (p in other) {
-                if (Player.intersectsWithPlayer(x, y, Item.RADIUS + MIN_ITEM_DIST, p)) {
+            for (p in others) {
+                if (p.intersectsWith(x, y, MIN_ITEM_DIST)) {
                     tooClose = true
                     break
                 }

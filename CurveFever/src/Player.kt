@@ -1,120 +1,7 @@
 import processing.core.PApplet.*
 import kotlin.math.absoluteValue
 
-data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World) {
-
-    abstract class TrailSection(val x1: Float, val y1: Float, val direction: Direction, val gap: Boolean, val thickness: Float) {
-        abstract fun lastPosition(): Pair<Float, Float>
-        abstract fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean
-    }
-
-    class LinearTrailSection(x1: Float, y1: Float, gap: Boolean, thickness: Float, var x2: Float, var y2: Float) :
-        TrailSection(x1, y1, Direction.STRAIGHT, gap, thickness) {
-
-        override fun lastPosition() = Pair(x2, y2)
-
-        override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
-            val p1Dist = dist(x1, y1, x, y)
-            val p2Dist = dist(x2, y2, x, y)
-
-            if (p1Dist < this.thickness / 2 + thickness / 2)
-                return true
-
-            if (p2Dist < this.thickness / 2 + thickness / 2)
-                return true
-
-            val centerLineAngle = floorMod(angle(x1, y1, x2, y2), TAU)
-            val inverseCenterLineAngle = floorMod(centerLineAngle + PI, TAU)
-
-            val xL1 = x1 + cos(centerLineAngle - HALF_PI) * this.thickness / 2
-            val yL1 = y1 + sin(centerLineAngle - HALF_PI) * this.thickness / 2
-            val xL2 = x1 - cos(centerLineAngle - HALF_PI) * this.thickness / 2
-            val yL2 = y1 - sin(centerLineAngle - HALF_PI) * this.thickness / 2
-
-            val maxDist = dist(x2, y2, xL1, yL1)
-
-            if (p1Dist > maxDist || p2Dist > maxDist)
-                return false
-
-            val angleL1 = floorMod(angle(xL1, yL1, x, y), TAU)
-            val angleL2 = floorMod(angle(xL2, yL2, x, y), TAU)
-
-            if (centerLineAngle < inverseCenterLineAngle) {
-                if ((angleL1 > centerLineAngle && angleL1 < inverseCenterLineAngle)
-                    != (angleL2 > centerLineAngle && angleL2 < inverseCenterLineAngle)
-                ) {
-                    printD("linear\n")
-                    return true
-                }
-            } else {
-                if ((angleL1 > centerLineAngle || angleL1 < inverseCenterLineAngle)
-                    != (angleL2 > centerLineAngle || angleL2 < inverseCenterLineAngle)
-                ) {
-                    printD("linear\n")
-                    return true
-                }
-            }
-
-            return false
-        }
-    }
-
-    class ArcTrailSection(x1: Float, y1: Float, direction: Direction, gap: Boolean, thickness: Float, val radius: Float, val start: Float, var end: Float) :
-        TrailSection(x1, y1, direction, gap, thickness) {
-
-        val startAngle: Float
-            get() = start - HALF_PI * direction.factor
-
-        val endAngle: Float
-            get() = end - HALF_PI * direction.factor
-
-        override fun lastPosition(): Pair<Float, Float> {
-            val x = x1 + (cos(endAngle) - cos(startAngle)) * radius
-            val y = y1 + (sin(endAngle) - sin(startAngle)) * radius
-            return Pair(x, y)
-        }
-
-        override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
-            val p1Dist = dist(x1, y1, x, y)
-            val lastPos = lastPosition()
-            val p2Dist = dist(lastPos.first, lastPos.second, x, y)
-
-            if (p1Dist < this.thickness / 2 + thickness / 2)
-                return true
-
-            if (p2Dist < this.thickness / 2 + thickness / 2)
-                return true
-
-            val minDist = radius - this.thickness / 2 - thickness / 2
-            val maxDist = radius + this.thickness / 2 + thickness / 2
-
-            val arcCenterX = x1 - cos(startAngle) * radius
-            val arcCenterY = y1 - sin(startAngle) * radius
-
-            val arcCenterDist = dist(arcCenterX, arcCenterY, x, y).absoluteValue
-
-            if (arcCenterDist < minDist || arcCenterDist > maxDist)
-                return false
-
-            val arcStartAngle = floorMod(if (direction == Direction.CLOCKWISE) startAngle else endAngle, TAU)
-            val arcEndAngle = floorMod(if (direction == Direction.CLOCKWISE) endAngle else startAngle, TAU)
-            val arcAngle = floorMod(angle(arcCenterX, arcCenterY, x, y), TAU)
-
-            if (arcStartAngle < arcEndAngle) {
-                if (arcAngle > arcStartAngle && arcAngle < arcEndAngle) {
-                    printD("arc\n")
-                    return true
-                }
-            } else {
-                if (arcAngle > arcStartAngle || arcAngle < arcEndAngle) {
-                    printD("arc\n")
-                    return true
-                }
-            }
-
-            return false
-        }
-    }
+data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World, val name: String) {
 
     enum class Direction(val factor: Int) {
         STRAIGHT(0),
@@ -131,15 +18,9 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         private const val MIN_THICKNESS = 1f
         private const val GAP_RATE = 0.4
 
-        fun intersectsWithPlayer(x: Float, y: Float, thickness: Float, other: Player): Boolean {
-            if (intersectsWithTrail(x, y, thickness, other.trail))
-                return true
-
-            if (dist(other.x, other.y, x, y) < other.thickness / 2 + thickness / 2)
-                return true
-
-            return false
-        }
+        private const val WALL_CRASH_MESSAGE = "crashed into the wall"
+        private const val SELF_CRASH_MESSAGE = "crashed into himself"
+        private const val PLAYER_CRASH_MESSAGE = "crashed into "
 
         fun intersectsWithTrail(x: Float, y: Float, thickness: Float, trail: List<TrailSection>): Boolean {
             for (ts in trail) {
@@ -154,9 +35,16 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         }
     }
 
+    var leftKey: Int = 0
+    var rightKey: Int = 0
+
+    var leftPressed = false
+    var rightPressed = false
+
     var effects = mutableListOf<Effect>()
     var trail = mutableListOf<TrailSection>()
     var direction = Direction.STRAIGHT
+    var crashed = false
     var score = 0
 
     val speed: Float
@@ -187,16 +75,24 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         effects = mutableListOf()
         trail = mutableListOf()
         direction = Direction.STRAIGHT
+        crashed = false
+
+        leftPressed = false
+        rightPressed = false
     }
 
     fun update() {
-        updateEffects()
-        move()
+        if (!crashed) {
+            updateEffects()
+            move()
+        }
     }
 
     fun postUpdate() {
-        checkForCrash()
-        collectItems()
+        if (!crashed) {
+            checkForCrash()
+            collectItems()
+        }
     }
 
     private fun updateEffects() {
@@ -214,9 +110,8 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
             updateTrailSection()
         }
 
-        val pos = trail.last().lastPosition()
-        x = pos.first
-        y = pos.second
+        x = trail.last().lastPosX
+        y = trail.last().lastPosY
 
         if (trail.last().direction != Direction.STRAIGHT)
             angle = (trail.last() as ArcTrailSection).end
@@ -268,23 +163,50 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         if (x < thickness / 2 || x > Specs.width - thickness / 2
             || y < thickness / 2 || y > Specs.height - thickness / 2
         )
-            world.crashed(this)
+            world.crashed(this, WALL_CRASH_MESSAGE)
 
-        val other = if (world.player1 == this) world.player2 else world.player1
+        if (intersectsWithOwnTrail()) {
+            world.crashed(this, SELF_CRASH_MESSAGE)
+        }
 
-        if (intersectsWithPlayer(this.x, this.y, this.thickness, other))
-            world.crashed(this)
+        val others = world.players.filter { it != this }
 
-        if (intersectsOwnTrail()) {
-            world.crashed(this)
+        for (p in others) {
+            if (p.intersectsWith(this.x, this.y, this.thickness)) {
+                world.crashed(this, PLAYER_CRASH_MESSAGE + p.name)
+                break
+            }
         }
     }
 
-    private fun intersectsOwnTrail(): Boolean {
+    fun intersectsWith(x: Float, y: Float, radius: Float): Boolean {
+        if (intersectsWithTrail(x, y, thickness, this.trail))
+            return true
+
+        if (dist(this.x, this.y, x, y) < this.thickness / 2 + radius)
+            return true
+
+        return false
+    }
+
+    private fun intersectsWithOwnTrail(): Boolean {
         val trailToCheck = trail.filter {
             val minDist = thickness / 2 + it.thickness / 2
-            val endPos = it.lastPosition()
-            val endDist = dist(x, y, endPos.first, endPos.second)
+            val endDist = dist(x, y, it.lastPosX, it.lastPosY)
+
+            if (endDist < minDist) {
+                if (it.direction != Direction.STRAIGHT) {
+                    with(it as ArcTrailSection) {
+                        val angleDiff = (start - end).absoluteValue
+                        if (angleDiff > PI) {
+                            val startDist = dist(x1, y1, x, y)
+                            if (startDist < minDist) {
+                                return true
+                            }
+                        }
+                    }
+                }
+            }
 
             endDist > minDist
         }
@@ -308,8 +230,12 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         trail.clear()
     }
 
-    fun turn(direction: Direction) {
-        this.direction = direction
+    fun turn() {
+        this.direction = when {
+            leftPressed == rightPressed -> Direction.STRAIGHT
+            leftPressed -> Direction.COUNTER_CLOCKWISE
+            else -> Direction.CLOCKWISE
+        }
     }
 }
 

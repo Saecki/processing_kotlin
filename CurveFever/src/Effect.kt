@@ -25,7 +25,7 @@ data class Effect(val start: Long, val duration: Long, var type: Type) {
         SLOW_TURNING(0f, 20f, 0f, 5000L, 1000L, Color(150f, 40f, 240f)),
         EXPAND(0f, 0f, 4f, 5000L, 1000L, Color(30f, 230f, 0f)),
         SHRINK(0f, 0f, -2f, 5000L, 1000L, Color(200f, 200f, 40f)),
-        GAP(0f, 0f, 0f, 100L, 150L, Color(0f, 0f, 0f)),
+        GAP(0f, 0f, 0f, 150L, 100L, Color(0f, 0f, 0f)),
         CLEAR(0f, 0f, 0f, 0L, 0L, Color(230f, 40f, 220f))
     }
 }
