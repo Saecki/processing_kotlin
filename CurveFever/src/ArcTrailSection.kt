@@ -1,9 +1,7 @@
-import processing.core.PApplet.dist
+import processing.core.PApplet.*
 import processing.core.PConstants.HALF_PI
 import processing.core.PConstants.TAU
 import kotlin.math.absoluteValue
-import kotlin.math.cos
-import kotlin.math.sin
 
 class ArcTrailSection(x1: Float, y1: Float, direction: Player.Direction, gap: Boolean, thickness: Float, val radius: Float, val start: Float, var end: Float) :
     TrailSection(x1, y1, direction, gap, thickness) {
@@ -26,23 +24,18 @@ class ArcTrailSection(x1: Float, y1: Float, direction: Player.Direction, gap: Bo
     override val lastPosY: Float
         get() = y1 + (sin(endAngle) - sin(startAngle)) * radius
 
-    override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
+    override fun intersectsWith(x: Float, y: Float, dist: Float): Boolean {
         val p1Dist = dist(x1, y1, x, y)
         val p2Dist = dist(lastPosX, lastPosY, x, y)
-        val maxEndDist = this.thickness / 2 + thickness / 2
+        val maxEndDist = this.thickness / 2 + dist
 
-        if (p1Dist < maxEndDist) {
+        if (p1Dist < maxEndDist || p2Dist < maxEndDist) {
             printD("arc\n")
             return true
         }
 
-        if (p2Dist < maxEndDist) {
-            printD("arc\n")
-            return true
-        }
-
-        val minDist = radius - this.thickness / 2 - thickness / 2
-        val maxDist = radius + this.thickness / 2 + thickness / 2
+        val minDist = this.radius - this.thickness / 2 - dist
+        val maxDist = this.radius + this.thickness / 2 + dist
 
         val arcCenterDist = dist(arcCenterX, arcCenterY, x, y).absoluteValue
 
@@ -53,7 +46,7 @@ class ArcTrailSection(x1: Float, y1: Float, direction: Player.Direction, gap: Bo
         val arcEndAngle = floorMod(if (direction == Player.Direction.CLOCKWISE) endAngle else startAngle, TAU)
         val arcAngle = floorMod(angle(arcCenterX, arcCenterY, x, y), TAU)
 
-        if (arcStartAngle < arcEndAngle) {
+        if (arcStartAngle <= arcEndAngle) {
             if (arcAngle > arcStartAngle && arcAngle < arcEndAngle) {
                 printD("arc\n")
                 return true

@@ -3,5 +3,5 @@ abstract class TrailSection(val x1: Float, val y1: Float, val direction: Player.
     abstract val lastPosX: Float
     abstract val lastPosY: Float
 
-    abstract fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean
+    abstract fun intersectsWith(x: Float, y: Float, dist: Float): Boolean
 }

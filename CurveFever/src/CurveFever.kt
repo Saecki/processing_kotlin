@@ -3,7 +3,7 @@ import processing.core.PConstants
 
 class CurveFever() : PApplet() {
 
-    companion object Factory {
+    companion object {
 
         fun run() {
             val cf = CurveFever()
@@ -11,22 +11,17 @@ class CurveFever() : PApplet() {
         }
     }
 
-    var world = World()
+    private var world = World()
 
-    var p1CW = false
-    var p1CCW = false
-    var p2CW = false
-    var p2CCW = false
-
-    val menu: Boolean
+    private val menu: Boolean
         get() = world.state == World.State.STOPPED || world.state == World.State.PAUSED
 
-    val selectionFields = 3
+    private val selectionFields = 3
 
-    var playerMenu = false
-    var selectedPlayerIndex = 0
-    var selectedPlayerField = 0
-    var selectionActive = false
+    private var playerMenu = false
+    private var selectedPlayerIndex = 0
+    private var selectedPlayerField = 0
+    private var selectionActive = false
 
     override fun settings() {
         size(1280, 720)
@@ -81,19 +76,14 @@ class CurveFever() : PApplet() {
 
             if (selectionActive) {
                 when (selectedPlayerField) {
-                    0 -> if (key == BACKSPACE) {
+                    0 -> if (key == BACKSPACE)
                         world.players[selectedPlayerIndex].name = world.players[selectedPlayerIndex].name.dropLast(1)
-                    } else if (keyCode != SHIFT && key != ENTER) {
+                    else if (keyCode != SHIFT && key != ENTER && key != ESC)
                         world.players[selectedPlayerIndex].name += key
-                    }
-                    1 -> if (key != ENTER) {
-                        world.players[selectedPlayerIndex].leftKeyCode = keyCode
-                        world.players[selectedPlayerIndex].leftKey = key
-                    }
-                    2 -> if (key != ENTER) {
-                        world.players[selectedPlayerIndex].rightKeyCode = keyCode
-                        world.players[selectedPlayerIndex].rightKey = key
-                    }
+                    1 -> if (key != ENTER)
+                        world.players[selectedPlayerIndex].setLeftKey(key, keyCode)
+                    2 -> if (key != ENTER)
+                        world.players[selectedPlayerIndex].setRightKey(key, keyCode)
                 }
             }
         } else {
@@ -140,8 +130,8 @@ class CurveFever() : PApplet() {
         rect(0f, 0f, width.toFloat(), height.toFloat())
 
         if (playerMenu) {
-            val rectWidth = width / 5f
-            val rectHeight = height / 8f
+            val rectWidth = width / 6f
+            val rectHeight = height / 9f
 
             world.players.forEachIndexed { index, player ->
 
@@ -149,14 +139,14 @@ class CurveFever() : PApplet() {
                 setFill(player.color)
                 textAlign(CENTER, CENTER)
                 textSize(rectHeight / 2f)
-                text(player.name, width / 2f - rectWidth * 1f, rectHeight * (index + 0.5f))
+                text(player.name, width / 2f - rectWidth * 1f, rectHeight * (index + 1f))
 
                 //left key
                 fill(200)
-                text(player.leftKey, width / 2f, rectHeight * (index + 0.5f))
+                text(player.leftKey, width / 2f + rectWidth * 0.5f, rectHeight * (index + 1f))
 
                 //right key
-                text(player.rightKey, width / 2f + rectWidth * 1, rectHeight * (index + 0.5f))
+                text(player.rightKey, width / 2f + rectWidth * 1.5f, rectHeight * (index + 1f))
             }
 
             //selection
@@ -166,7 +156,9 @@ class CurveFever() : PApplet() {
             else
                 stroke(100)
             strokeWeight(4f)
-            rect(width / 2 + rectWidth * (-1.5f + selectedPlayerField), rectHeight * selectedPlayerIndex, rectWidth, rectHeight)
+            val w = if (selectedPlayerField == 0) rectWidth * 2 else rectWidth
+            val x = if (selectedPlayerField == 0) -2f else selectedPlayerField - 1f
+            rect(width / 2 + rectWidth * x, rectHeight * (selectedPlayerIndex + 0.5f), w, rectHeight)
 
         } else if (world.state == World.State.STOPPED) {
             val text = """
@@ -284,31 +276,34 @@ class CurveFever() : PApplet() {
     }
 
     private fun selectionLeft() {
-        if (selectionActive) {
-        } else {
+        if (!selectionActive) {
             selectedPlayerField = floorMod(--selectedPlayerField, selectionFields)
+        } else if (selectedPlayerField == 0) {
+            world.players[selectedPlayerIndex].color = world.prevColor(selectedPlayerIndex)
         }
     }
 
     private fun selectionRight() {
-        if (selectionActive) {
-
-        } else {
+        if (!selectionActive) {
             selectedPlayerField = (selectedPlayerField + 1) % selectionFields
+        } else if (selectedPlayerField == 0) {
+            world.players[selectedPlayerIndex].color = world.nextColor(selectedPlayerIndex)
         }
     }
 
     private fun selectionUp() {
-        if (selectionActive) {
-        } else {
+        if (!selectionActive) {
             selectedPlayerIndex = floorMod(--selectedPlayerIndex, world.players.size)
+        } else if (selectedPlayerField == 0) {
+            world.players[selectedPlayerIndex].color = world.prevColor(selectedPlayerIndex)
         }
     }
 
     private fun selectionDown() {
-        if (selectionActive) {
-        } else {
+        if (!selectionActive) {
             selectedPlayerIndex = (selectedPlayerIndex + 1) % world.players.size
+        } else if (selectedPlayerField == 0) {
+            world.players[selectedPlayerIndex].color = world.nextColor(selectedPlayerIndex)
         }
     }
 

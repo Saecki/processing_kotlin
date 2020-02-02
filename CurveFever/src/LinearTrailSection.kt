@@ -9,16 +9,16 @@ class LinearTrailSection(x1: Float, y1: Float, gap: Boolean, thickness: Float, v
     override val lastPosY: Float
         get() = y2
 
-    override fun intersectsWith(x: Float, y: Float, thickness: Float): Boolean {
+    override fun intersectsWith(x: Float, y: Float, dist: Float): Boolean {
         val p1Dist = dist(x1, y1, x, y)
         val p2Dist = dist(x2, y2, x, y)
 
-        if (p1Dist < this.thickness / 2 + thickness / 2) {
+        if (p1Dist < this.thickness / 2 + dist) {
             printD("linear\n")
             return true
         }
 
-        if (p2Dist < this.thickness / 2 + thickness / 2) {
+        if (p2Dist < this.thickness / 2 + dist) {
             printD("linear\n")
             return true
         }

@@ -1,5 +1,3 @@
-import java.util.*
-
 data class Color(val r: Float, val g: Float, var b: Float) {
 
     companion object {
@@ -9,7 +7,10 @@ data class Color(val r: Float, val g: Float, var b: Float) {
             Color(50f, 230f, 20f),
             Color(130f, 100f, 200f),
             Color(30f, 200f, 200f),
-            Color(230f, 40f, 200f)
+            Color(230f, 40f, 200f),
+            Color(230f, 20f, 10f),
+            Color(230f, 230f, 30f),
+            Color(50f, 40f, 230f)
         )
     }
 }

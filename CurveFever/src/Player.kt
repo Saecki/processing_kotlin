@@ -1,7 +1,7 @@
 import processing.core.PApplet.*
 import kotlin.math.absoluteValue
 
-data class Player(var x: Float, var y: Float, var angle: Float, val color: Color, val world: World, var name: String) {
+data class Player(var x: Float, var y: Float, var angle: Float, var color: Color, var name: String, val world: World) {
 
     enum class Direction(val factor: Int) {
         STRAIGHT(0),
@@ -22,12 +22,12 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         private const val SELF_CRASH_MESSAGE = "crashed into himself"
         private const val PLAYER_CRASH_MESSAGE = "crashed into "
 
-        fun intersectsWithTrail(x: Float, y: Float, thickness: Float, trail: List<TrailSection>): Boolean {
+        fun intersectsWithTrail(x: Float, y: Float, dist: Float, trail: List<TrailSection>): Boolean {
             for (ts in trail) {
                 if (ts.gap)
                     continue
 
-                if (ts.intersectsWith(x, y, thickness))
+                if (ts.intersectsWith(x, y, dist))
                     return true
             }
 
@@ -35,11 +35,10 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         }
     }
 
-    var leftKeyCode: Int = 0
-    var rightKeyCode: Int = 0
-
-    var leftKey: Char = ' '
-    var rightKey: Char = ' '
+    var leftKeyCode = 0
+    var rightKeyCode = 0
+    var leftKey = " "
+    var rightKey = " "
 
     var leftPressed = false
     var rightPressed = false
@@ -175,18 +174,18 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
         val others = world.players.filter { it != this }
 
         for (p in others) {
-            if (p.intersectsWith(this.x, this.y, this.thickness)) {
+            if (p.intersectsWith(this.x, this.y, this.thickness / 2)) {
                 world.crashed(this, PLAYER_CRASH_MESSAGE + p.name)
                 break
             }
         }
     }
 
-    fun intersectsWith(x: Float, y: Float, radius: Float): Boolean {
-        if (intersectsWithTrail(x, y, thickness, this.trail))
+    fun intersectsWith(x: Float, y: Float, dist: Float): Boolean {
+        if (intersectsWithTrail(x, y, dist, this.trail))
             return true
 
-        if (dist(this.x, this.y, x, y) < this.thickness / 2 + radius)
+        if (dist(this.x, this.y, x, y) < this.thickness / 2 + dist)
             return true
 
         return false
@@ -214,7 +213,7 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
             endDist > minDist
         }
 
-        return intersectsWithTrail(this.x, this.y, this.thickness, trailToCheck)
+        return intersectsWithTrail(this.x, this.y, this.thickness / 2, trailToCheck)
     }
 
     private fun collectItems() {
@@ -239,6 +238,26 @@ data class Player(var x: Float, var y: Float, var angle: Float, val color: Color
             leftPressed -> Direction.COUNTER_CLOCKWISE
             else -> Direction.CLOCKWISE
         }
+    }
+
+    fun setLeftKey(key: Char, keyCode: Int) {
+        leftKeyCode = keyCode
+        leftKey = key(key, keyCode)
+    }
+
+    fun setRightKey(key: Char, keyCode: Int) {
+        rightKeyCode = keyCode
+        rightKey = key(key, keyCode)
+    }
+
+    private fun key(key: Char, keyCode: Int) = when (keyCode) {
+        LEFT -> "Left"
+        RIGHT -> "Right"
+        UP -> "Up"
+        DOWN -> "Down"
+        SHIFT -> "Shift"
+        CONTROL -> "Ctrl"
+        else -> key.toString()
     }
 }
 

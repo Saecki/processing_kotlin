@@ -14,7 +14,7 @@ class World {
         private const val DEFAULT_START_DELAY = 2000L
         private const val DEFAULT_ITEM_LIMIT = 5
         private const val DEFAULT_ITEM_SPAWN_RATE = 0.002
-        private const val MIN_ITEM_DIST = 100f
+        private const val MIN_ITEM_DIST = 200f
         private const val MIN_WALL_DIST = 150f
     }
 
@@ -40,19 +40,17 @@ class World {
         printD("##############################\n")
         startTime = Time.now + DEFAULT_START_DELAY
 
-        //TODO add menu to add players
-        players.add(randomPlayer("Player 1"))
-        players.add(randomPlayer("Player 2", *players.toTypedArray()))
+        val p1 = randomPlayer("Player1").apply {
+            setLeftKey(' ', LEFT)
+            setRightKey(' ', RIGHT)
+        }
+        val p2 = randomPlayer("Player2", p1).apply {
+            setLeftKey('a', 65)
+            setRightKey('d', 68)
+        }
 
-        //TODO add menu to set keys
-        players[0].leftKeyCode = LEFT
-        players[0].rightKeyCode = RIGHT
-        players[0].leftKey = ' '
-        players[0].rightKey = ' '
-        players[1].leftKeyCode = 65
-        players[1].rightKeyCode = 68
-        players[1].leftKey = 'a'
-        players[1].rightKey = 'd'
+        players.add(p1)
+        players.add(p2)
     }
 
     fun update() {
@@ -145,7 +143,7 @@ class World {
 
         remainingColors.removeAll(others.map { it.color })
 
-        return Player(x, y, angle, remainingColors.random(), this, name)
+        return Player(x, y, angle, remainingColors.random(), name, this)
     }
 
     private fun randomItem(): Item {
@@ -185,5 +183,27 @@ class World {
         }
 
         return Pair(x, y)
+    }
+
+    fun nextColor(playerIndex: Int): Color {
+        val player = players[playerIndex]
+        val availableColors = Color.PLAYER_COLORS.filter { it !in players.map { it.color } || it == player.color }
+        if (availableColors.size > 1) {
+            val colorIndex = (availableColors.indexOf(player.color) + 1) % availableColors.size
+            return availableColors[colorIndex]
+        }
+
+        return player.color
+    }
+
+    fun prevColor(playerIndex: Int): Color {
+        val player = players[playerIndex]
+        val availableColors = Color.PLAYER_COLORS.filter { it !in players.map { it.color } || it == player.color }
+        if (availableColors.size > 1) {
+            val colorIndex = floorMod(availableColors.indexOf(player.color) - 1, availableColors.size)
+            return availableColors[colorIndex]
+        }
+
+        return player.color
     }
 }
