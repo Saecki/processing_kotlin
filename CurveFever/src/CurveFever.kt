@@ -119,7 +119,7 @@ class CurveFever() : PApplet() {
     }
 
     private fun update() {
-        Time.update()
+        Time.update(world.state == World.State.PAUSED)
         Specs.width = width
         Specs.height = height
     }
