@@ -24,6 +24,9 @@ class World {
     private val itemSpawnRate: Double
         get() = DEFAULT_ITEM_SPAWN_RATE
 
+    val wallTeleporting: Boolean
+        get() = effects.any { it.type == Effect.Type.WALL_TELEPORTING }
+
     var state = State.STOPPED
         private set
 
@@ -31,7 +34,7 @@ class World {
         private set
 
     var items = mutableListOf<Item>()
-
+    var effects = mutableListOf<Effect>()
     var players = mutableListOf<Player>()
 
     fun init() {
@@ -60,10 +63,12 @@ class World {
                     state = State.RUNNING
             }
             State.RUNNING -> {
+                updateEffects()
                 spawnItems(itemSpawnRate)
                 players.forEach { it.update() }
                 players.forEach { it.postUpdate() }
             }
+            else -> Unit
         }
     }
 
@@ -124,6 +129,10 @@ class World {
     fun removePlayer(index: Int) {
         if (players.size > 2)
             players.removeAt(index)
+    }
+
+    private fun updateEffects() {
+        effects.removeAll { effect -> effect.start + effect.duration < Time.now }
     }
 
     private fun spawnItems(spawnRate: Double) {

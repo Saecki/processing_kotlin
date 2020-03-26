@@ -1,5 +1,4 @@
 import processing.core.PApplet
-import processing.core.PConstants
 
 class CurveFever() : PApplet() {
 
@@ -43,6 +42,12 @@ class CurveFever() : PApplet() {
 
         background(50)
 
+        if (world.wallTeleporting) {
+            noFill()
+            stroke(0f, 200f, 0f)
+            strokeWeight(2f)
+            rect(1f, 1f, width.toFloat() - 3f, height.toFloat() - 3f)
+        }
         world.items.forEach { drawItem(it) }
         world.players.forEach { drawPlayer(it) }
 

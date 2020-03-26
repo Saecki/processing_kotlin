@@ -162,10 +162,27 @@ data class Player(var x: Float, var y: Float, var angle: Float, var color: Color
     }
 
     private fun checkForCrash() {
-        if (x < thickness / 2 || x > Specs.width - thickness / 2
+        if (world.wallTeleporting) {
+            if (x < 0) {
+                x = Specs.width.toFloat()
+                addTrailSection()
+            } else if (x > Specs.width) {
+                x = 0f
+                addTrailSection()
+            }
+
+            if (y < 0) {
+                y = Specs.height.toFloat()
+                addTrailSection()
+            } else if (y > Specs.height) {
+                y = 0f
+                addTrailSection()
+            }
+        } else if (x < thickness / 2 || x > Specs.width - thickness / 2
             || y < thickness / 2 || y > Specs.height - thickness / 2
-        )
+        ) {
             world.crashed(this, WALL_CRASH_MESSAGE)
+        }
 
         if (intersectsWithOwnTrail()) {
             world.crashed(this, SELF_CRASH_MESSAGE)
@@ -226,6 +243,11 @@ data class Player(var x: Float, var y: Float, var angle: Float, var color: Color
         if (collectedItems.any { item -> item.type == Effect.Type.CLEAR }) {
             world.clearPlayerTrails()
         }
+
+        world.effects.addAll(collectedItems
+            .filter { item -> item.type == Effect.Type.WALL_TELEPORTING }
+            .map { Effect.ofType(it.type) }
+        )
     }
 
     fun clearTrail() {
