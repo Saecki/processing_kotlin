@@ -31,3 +31,10 @@ data class Effect(val start: Long, val duration: Long, var type: Type) {
         CLEAR(0f, 0f, 0f, 0L, 0L, Color(230f, 40f, 220f))
     }
 }
+
+data class Item(var x: Float, var y: Float, var type: Effect.Type) {
+
+    companion object {
+        val RADIUS = 7.5f
+    }
+}
