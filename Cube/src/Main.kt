@@ -270,18 +270,15 @@ class RubikCube(val size: Int) : PApplet() {
             PConstants.DOWN -> down = true
             PConstants.RIGHT -> right = true
             PConstants.LEFT -> left = true
-        }
-
-        when (key) {
-            in "Uu" -> cube = cube.rotatedY(clockwise, 0)
-            in "Dd" -> cube = cube.rotatedY(!clockwise, size - 1)
-            in "Rr" -> cube = cube.rotatedX(!clockwise, size - 1)
-            in "Ll" -> cube = cube.rotatedX(clockwise, 0)
-            in "Ff" -> cube = cube.rotatedZ(!clockwise, size - 1)
-            in "Bb" -> cube = cube.rotatedZ(clockwise, 0)
-            in "Nn" -> cube = Cube.ofSize(size)
-            in "Oo" -> ortho()
-            in "Pp" -> perspective()
+            'U'.toInt() -> cube = cube.rotatedY(clockwise, 0)
+            'D'.toInt() -> cube = cube.rotatedY(!clockwise, size - 1)
+            'R'.toInt() -> cube = cube.rotatedX(!clockwise, size - 1)
+            'L'.toInt() -> cube = cube.rotatedX(clockwise, 0)
+            'F'.toInt() -> cube = cube.rotatedZ(!clockwise, size - 1)
+            'B'.toInt() -> cube = cube.rotatedZ(clockwise, 0)
+            'N'.toInt() -> cube = Cube.ofSize(size)
+            'O'.toInt() -> ortho()
+            'P'.toInt() -> perspective()
         }
     }
 
